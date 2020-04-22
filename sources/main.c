@@ -27,7 +27,6 @@ static void print_command_not_found(command_t *command)
 
 static char execute_a_command(shell_t *shell, int *exit)
 {
-    return ('0');
     char (*execute[3])(shell_t *) = {local_command,
         term_command, path_command};
     char rtn = '0';
@@ -58,7 +57,6 @@ static char run(char **envp)
         shell->command = init_command();
         if (NULL == shell->command)
             return ('1');
-        my_putstr(shell->command->line);
         if ('3' == execute_a_command(shell, &exit))
             return ('1');
         free_command(shell->command);
