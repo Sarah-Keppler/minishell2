@@ -8,8 +8,6 @@
 #include <unistd.h>
 #include "proto.h"
 
-/* /!\ Improve prompt with pwd. */
-
 void print_prompt(void)
 {
     if (!isatty(0))

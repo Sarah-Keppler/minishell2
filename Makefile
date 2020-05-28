@@ -24,6 +24,7 @@ LIB	=	get_next_line.c         \
                 str_manipulation.c      \
                 tab_and_spaces.c
 
+
 ## --------------------------------------------------------------- ##
 PATH_PROJECT	=	./sources/
 PROJECT	=	main.c			\
@@ -38,7 +39,14 @@ PROJECT	=	main.c			\
 		term_command.c		\
 		execution.c		\
 		path_command.c		\
-		local_command.c
+		local_command.c		\
+		command.c		\
+		free.c			\
+		check_dir_and_flags.c	\
+		dir_and_flags.c		\
+		check_binary.c		\
+		chdir.c			\
+		error.c
 
 ## --------------------------------------------------------------- ##
 SRC	=	$(addprefix $(PATH_LIB), $(LIB))	\

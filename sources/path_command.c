@@ -11,7 +11,8 @@
 #include <sys/types.h>
 #include "proto.h"
 
-static char execute_binary(shell_t *shell, char *path, char *binary)
+static char execute_binary(shell_t * shell, command_t *command, char *path,
+    char *binary)
 {
     int len = my_strlen(path) + my_strlen(binary) + 1;
     char *exec_path = malloc(sizeof(char) * (len + 1));
@@ -21,7 +22,7 @@ static char execute_binary(shell_t *shell, char *path, char *binary)
     my_strcpy(exec_path, path);
     my_strcat(exec_path, "/");
     my_strcat(exec_path, binary);
-    if ('1' == execute_a_binary(shell, exec_path))
+    if ('1' == execute_a_binary(shell, command, exec_path))
         return ('1');
     free(exec_path);
     return ('0');
@@ -43,19 +44,19 @@ static char *find_binary(char **path, char *binary)
     struct dirent *rd_file;
 
     for (int i = 0; path[i]; ++i) {
-	dir = opendir(path[i]);
-	if (NULL == dir)
+        dir = opendir(path[i]);
+        if (NULL == dir)
             continue;
         rd_file = readdir(dir);
         if ('0' == check_path(binary, dir, rd_file))
             return (path[i]);
-	rd_file = NULL;
-	closedir(dir);
+        rd_file = NULL;
+        closedir(dir);
     }
     return (NULL);
 }
 
-char path_command(shell_t *shell)
+char path_command(shell_t *shell, command_t *command)
 {
     char *path = get_envvar(shell->env, "PATH");
     char **values = NULL;
@@ -64,10 +65,10 @@ char path_command(shell_t *shell)
     values = my_str_to_word_array(path + 4, ':');
     if (NULL == values)
         return ('1');
-    exec_path = find_binary(values, shell->command->args[0]);
+    exec_path = find_binary(values, command->args[0]);
     if (NULL == exec_path)
         return ('3');
-    if ('1' == execute_binary(shell, exec_path, shell->command->args[0]))
+    if ('1' == execute_binary(shell, command, exec_path, command->args[0]))
         return ('1');
     return ('0');
 }

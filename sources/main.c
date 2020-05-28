@@ -10,38 +10,44 @@
 #include <unistd.h>
 #include "proto.h"
 
-static void free_command(command_t *command)
+static char execute_a_command(shell_t *shell, command_t *command, int *exit)
 {
-    free(command->line);
-    for (int i = 0; command->args[i]; ++i)
-        free(command->args[i]);
-    free(command->args);
-    free(command);
-}
-
-static void print_command_not_found(command_t *command)
-{
-    my_puterror(command->args[0]);
-    my_puterror(": Command not found.\n");
-}
-
-static char execute_a_command(shell_t *shell, int *exit)
-{
-    char (*execute[3])(shell_t *) = {local_command,
+    char (*execute[3])(shell_t *, command_t *) = {local_command,
         term_command, path_command};
     char rtn = '0';
 
     for (int i = 0; 3 > i; ++i) {
-        rtn = execute[i](shell);
+        rtn = execute[i](shell, command);
         if ('3' != rtn)
-            break;
+            return (rtn);
     }
-    if (0 == my_strcmp("exit", shell->command->args[0])) {
+    if (0 == my_strcmp("exit", command->args[0])) {
         *exit = 0;
         return ('0');
     }
-    if ('3' == rtn)
-        print_command_not_found(shell->command);
+    if ('3' == rtn) {
+        my_puterror(command->args[0]);
+        my_puterror(": Command not found.\n");
+    }
+    return ('0');
+}
+
+static char check_filled_spaces(command_t *command)
+{
+    for (int i = 0; command->line[i]; ++i)
+        if (' ' != command->line[i])
+            return ('1');
+    return ('0');
+}
+
+static char execute_each_command(shell_t *shell, int *exit)
+{
+    for (int i = 0; shell->commands[i]; ++i) {
+        if ('0' == check_filled_spaces(shell->commands[i]))
+            continue;
+        if ('1' == execute_a_command(shell, shell->commands[i], exit))
+            return ('1');
+    }
     return ('0');
 }
 
@@ -49,17 +55,18 @@ static char run(char **envp)
 {
     shell_t *shell = init_shell(envp);
     int exit = 1;
+    char rtn = '0';
 
     if (NULL == shell)
         return ('1');
     while (exit) {
         print_prompt();
-        shell->command = init_command();
-        if (NULL == shell->command)
+        rtn = get_commands(shell);
+        if ('0' != rtn)
+            return (rtn);
+        if ('1' == execute_each_command(shell, &exit))
             return ('1');
-        if ('3' == execute_a_command(shell, &exit))
-            return ('1');
-        free_command(shell->command);
+        free_commands(shell->commands);
     }
     if (isatty(0))
         my_putstr("exit\n");
@@ -68,6 +75,8 @@ static char run(char **envp)
 
 int main(int ac, char **av, char **envp)
 {
+    if (NULL == envp || NULL == envp[0])
+        return (0);
     if ('1' == run(envp))
         return (84);
     return (0);

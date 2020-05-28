@@ -10,30 +10,34 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <string.h>
 #include "proto.h"
+
+static void pinpoint_the_signal_part2(int status, char **err, int *dump)
+{
+    if (WTERMSIG(status) == SIGFPE && (*dump = 1))
+        *err = "Floating exception";
+    if (WTERMSIG(status) == SIGABRT && (*dump = 1))
+        *err = "Aborted";
+    if (WTERMSIG(status) == SIGBUS && (*dump = 1))
+        *err = "Bus error";
+    return;
+}
 
 static void pinpoint_the_signal(int status)
 {
-    char *sig_output[32] = {"","Rupture\n", "Interruption Keyboard\n",
-        "Stop (core dump)\n", "Illegal Instruction (core dump)\n", "",
-        "Anormal stop (core dump)\n", "",
-        "Error floating number (core dump)\n", "Kill\n", "User signals\n",
-        "Segmentation fault (core dump)\n", "User signals\n",
-        "Error pipeline (core dump)\n", "Alarm signal\n", "Finished\n",
-        "User signals\n", "User signals\n", "Children stopped\n",
-        "Stop immediately\n", "Children stopped\n", "Input terminal\n",
-        "Output terminal\n", "", "Stop process (Ctrl Z)\n",
-        "Stop immediately\n", "Input terminal\n", "Output terminal\n", "",
-        "", "User signals\n", "User signals\n"};
-    int exit_stat = 0;
+    char *err = NULL;
+    int dump = 0;
 
-    if (WIFEXITED(status))
-        exit_stat = WEXITSTATUS(status);
-    if (WIFSIGNALED(status))
-        exit_stat = WTERMSIG(status);
-    if (WIFSTOPPED(status))
-        exit_stat = WSTOPSIG(status);
-    my_putstr(sig_output[exit_stat]);
+    if (WTERMSIG(status) == SIGSEGV && (dump = 1))
+        err = "Segmentation fault";
+    pinpoint_the_signal_part2(status, &err, &dump);
+    if (NULL == err)
+        return;
+    my_puterror(err);
+    if (dump && WCOREDUMP(status))
+        my_puterror(" (core dumped)");
+    my_puterror("\n");
 }
 
 static char execute_parent_part(pid_t cpid)
@@ -54,14 +58,15 @@ static char execute_parent_part(pid_t cpid)
     return ('0');
 }
 
-static void execute_children(shell_t *shell, pid_t cpid, char *path)
+static void execute_children(shell_t *shell, command_t *command, pid_t cpid,
+    char *path)
 {
     if (0 != cpid)
         return;
-    execve(path, shell->command->args, shell->env);
+    execve(path, command->args, shell->env);
 }
 
-char execute_a_binary(shell_t *shell, char *path)
+char execute_a_binary(shell_t *shell, command_t *command, char *path)
 {
     pid_t cpid = fork();
 
@@ -70,7 +75,7 @@ char execute_a_binary(shell_t *shell, char *path)
         return ('1');
     }
     while (1) {
-        execute_children(shell, cpid, path);
+        execute_children(shell, command, cpid, path);
         execute_parent_part(cpid);
         if (0 != cpid)
             break;

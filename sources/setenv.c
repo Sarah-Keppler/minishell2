@@ -18,7 +18,7 @@ static char check_setenv_arguments(command_t *command, char *name)
     }
     for (int i = 0; name[i]; ++i) {
         if (0 == i && !('A' <= name[i] && 'Z' >= name[i]) &&
-            !('a' <= name[i] && 'z' >= name[i])) {
+            !('a' <= name[i] && 'z' >= name[i]) && '_' != name[i]) {
             my_puterror("setenv: Variable name must begin with a letter.\n");
             return ('1');
         }
@@ -39,35 +39,43 @@ static char **add_envvar(char **env, const char *name, const char *value)
     char *envvar = NULL;
     int i = -1;
 
-    while(env[++i]);
+    while (env[++i]);
     new = malloc(sizeof(char *) * (i + 2));
     if (NULL == new)
         return (NULL);
-    for (int y = 0; env[y]; ++y)
-        new[y] = env[y];
     envvar = malloc(sizeof(char) * (my_strlen(name) + my_strlen(value) + 2));
     if (NULL == envvar)
         return (NULL);
     my_strcpy(envvar, name);
     my_strcat(envvar, "=");
     my_strcat(envvar, value);
+    for (int y = 0; env[y]; ++y)
+        new[y] = env[y];
     new[i] = envvar;
     new[i + 1] = NULL;
     free(env);
     return (new);
 }
 
-char my_setenv(shell_t *shell, char *name, char *value)
+static char create_or_change(shell_t *shell, char *name, char *value)
 {
     char rtn = '0';
+    char *envvar = get_envvar(shell->env, name);
 
-    if ('1' == check_setenv_arguments(shell->command, name))
-        return ('0');
-    if (NULL == get_envvar(shell->env, name))
+    if (NULL == envvar)
         shell->env = add_envvar(shell->env, name, value);
     else
         rtn = change_envvar(shell->env, name, value);
     if (NULL == shell->env || '1' == rtn)
+        return ('1');
+    return ('0');
+}
+
+char my_setenv(shell_t *shell, command_t *command, char *name, char *value)
+{
+    if ('1' == check_setenv_arguments(command, name))
+        return ('0');
+    if ('1' == create_or_change(shell, name, value))
         return ('1');
     return ('0');
 }

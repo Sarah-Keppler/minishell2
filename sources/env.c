@@ -42,15 +42,18 @@ int get_envvar_index(char **env, char *envvar)
 {
     int index = -1;
     int i = -1;
+    int pos = -1;
 
     while (env[++i]) {
         index = get_position_in_str(env[i], '=');
-        if (-1 == index)
-            return (index);
-        if (0 == my_strncmp(envvar, env[i], index - 1))
+        if (0 != my_strncmp(envvar, env[i], index))
+            continue;
+        if (index == my_strlen(envvar)) {
+            pos = i;
             break;
+        }
     }
-    return (i);
+    return (pos);
 }
 
 char *get_envvar(char **env, char *envvar)
@@ -63,7 +66,9 @@ char *get_envvar(char **env, char *envvar)
         index = get_position_in_str(env[i], '=');
         if (-1 == index)
             return (ptr);
-        if (0 == my_strncmp(envvar, env[i], index)) {
+        if (0 != my_strncmp(envvar, env[i], index))
+            continue;
+        if (index == my_strlen(envvar)) {
             ptr = env[i];
             break;
         }

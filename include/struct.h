@@ -14,8 +14,8 @@ typedef struct command_s {
     int nb_arg;
 } command_t;
 
-typedef struct shemm_s {
-    command_t *command;
+typedef struct shell_s {
+    command_t **commands;
     char **env;
     char *oldpwd;
 } shell_t;

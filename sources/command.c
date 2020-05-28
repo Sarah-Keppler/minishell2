@@ -9,64 +9,77 @@
 #include <stdlib.h>
 #include "proto.h"
 
-static char *get_user_command(void)
+static char *my_getline(void)
 {
-    char *buffer = NULL;
+    char *buf = NULL;
     size_t n = 0;
-    int rtn = 0;
+    int rtn = getline(&buf, &n, stdin);
 
-    rtn = getline(&buffer, &n, stdin);
     if (-1 == rtn || EOF == rtn)
         return (NULL);
-    while ('\n' == buffer[0]) {
+    while ('\n' == buf[0]) {
         print_prompt();
-        buffer = NULL;
+        buf = NULL;
         n = 0;
-        rtn = getline(&buffer, &n, stdin);
+        rtn = getline(&buf, &n, stdin);
         if (-1 == rtn || EOF == rtn)
             return (NULL);
     }
-    return (buffer);
+    return (buf);
 }
 
-static char set_up_command(command_t *command)
+static char **get_user_commands(char *eof)
 {
-    command->line = get_user_command();
-    if (NULL == command->line)
-        return ('1');
-    command->line = remove_space_and_tab(command->line);
-    if (NULL == command->line)
-        return ('1');
-    command->args = my_str_to_word_array(command->line, ' ');
-    if (NULL == command->args)
-        return ('1');
-    return ('0');
+    char *buf = my_getline();
+    char **commands = NULL;
+
+    if (NULL == buf) {
+        *eof = '0';
+        return (NULL);
+    }
+    commands = my_str_to_word_array(buf, ';');
+    if (NULL == commands)
+        return (NULL);
+    return (commands);
 }
 
-command_t *init_command(void)
+static command_t *init_command(char *command)
 {
-    command_t *command = malloc(sizeof(command_t));
+    command_t *new = malloc(sizeof(command_t));
     int i = 0;
 
-    if (NULL == command)
+    if (NULL == new)
         return (NULL);
-    if ('1' == set_up_command(command))
+    new->line = remove_space_and_tab(command);
+    if (NULL == new->line)
         return (NULL);
-    while (command->args[++i]);
-    command->nb_arg = i;
-    return (command);
+    new->args = my_str_to_word_array(new->line, ' ');
+    if (NULL == new->args)
+        return (NULL);
+    while (new->args[++i]);
+    new->nb_arg = i;
+    return (new);
 }
 
-command_t **get_commands()
+char get_commands(shell_t *shell)
 {
-    char *buf = get_user_command();
+    char eof = '1';
+    char **buf = get_user_commands(&eof);
     int nbr = -1;
     command_t **new = NULL;
 
     if (NULL == buf)
-        return (NULL);
-    nbr = get_nbr_of_time_char_appears(buf, ';');
+        return (('0' == eof) ? ('3') : ('1'));
+    while (buf[++nbr]);
     new = malloc(sizeof(command_t *) * (nbr + 1));
     if (NULL == new)
-        return (NULL);
+        return ('1');
+    for (int i = 0; buf[i]; ++i) {
+        new[i] = init_command(buf[i]);
+        if (NULL == new[i])
+            return ('1');
+    }
+    new[nbr] = NULL;
+    shell->commands = new;
+    return ('0');
 }
